@@ -1,0 +1,15 @@
+{
+  "name": "transactional-outbox-pattern",
+  "version": "1.0.0",
+  "dependencies": {
+    "dotenv": "16.3.1",
+    "fastify": "5.6.2",
+    "kafkajs": "2.2.4",
+    "mysql2": "3.16.0",
+    "sequelize": "6.37.7",
+    "uuid": "9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "3.0.1"
+  }
+}
