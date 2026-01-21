@@ -1,30 +1,10 @@
 const Sequelize = require('sequelize');
+const { FATAL_DATABASE_ERROR_PATTERNS, RETRY_MATCH } = require('./constants');
 const Transaction = require('./transaction');
 
-const logger = require('../../pino')();
+const logger = require('../pino')();
 
-const fatalDatabaseErrorPatterns = [
-	// Aurora failover / connection lost
-	'server has gone away',
-	'lost connection to mysql server',
-	'read econnreset',
-
-	// Prepared statement 失效
-	'unknown prepared statement handler',
-	'incorrect arguments to mysqld_stmt_execute',
-
-	// Connection pool fatal
-	'cannot enqueue',
-	'connection lost: the server closed the connection',
-
-	// The MySQL server is running with the --read-only option。
-	'read-only',
-	'etimedout',
-	'protocol_lost',
-	'connection terminated by user', // 某些 Proxy/Gatekeeper 斷開連線的訊息
-];
-
-async function connect(url, {
+async function createConnection(url, {
 	maxPoolSize = 4,
 	minPoolSize = 1,
 	logging = false,
@@ -70,27 +50,7 @@ async function connect(url, {
 			maxPreparedStatements: 1024,
 		},
 		retry: {
-			match: [
-				/ETIMEDOUT/,
-				/EHOSTUNREACH/,
-				/ECONNRESET/,
-				/ECONNREFUSED/,
-				/ETIMEDOUT/,
-				/ESOCKETTIMEDOUT/,
-				/EHOSTUNREACH/,
-				/EPIPE/,
-				/EAI_AGAIN/,
-				/ConnectionError/,
-				/SequelizeConnectionError/,
-				/SequelizeConnectionRefusedError/,
-				/SequelizeHostNotFoundError/,
-				/SequelizeHostNotReachableError/,
-				/SequelizeInvalidConnectionError/,
-				/SequelizeConnectionTimedOutError/,
-				/ConnectionAcquireTimeoutError/,
-				/SequelizeConnectionAcquireTimeoutError/,
-				/Connection terminated unexpectedly/,
-			],
+			match: RETRY_MATCH,
 			name: 'query',
 			backoffBase: 100,
 			backoffExponent: 1.1,
@@ -106,7 +66,7 @@ async function connect(url, {
 			if (err instanceof Sequelize.DatabaseError) {
 				const message = (err.message || '').toLowerCase();
 
-				const hasFatalDatabaseError = fatalDatabaseErrorPatterns.some(e => message.includes(e));
+				const hasFatalDatabaseError = FATAL_DATABASE_ERROR_PATTERNS.some(e => message.includes(e));
 
 				if (hasFatalDatabaseError && !isShuttingDown) {
 					isShuttingDown = true;
@@ -334,7 +294,7 @@ async function createSchedule({
 };
 
 module.exports = {
-	connect,
+	createConnection,
 	createTTLSchedule,
 	createSimpleTTLSchedule,
 	createListPartitionTTLSchedule,
