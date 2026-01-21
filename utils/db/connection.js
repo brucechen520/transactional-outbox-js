@@ -1,17 +1,15 @@
 const Sequelize = require('sequelize');
-const { FATAL_DATABASE_ERROR_PATTERNS, RETRY_MATCH } = require('./constants');
-const Transaction = require('./transaction');
+const { FATAL_DATABASE_ERROR_PATTERNS, RETRY_MATCH } = require('./constant');
+const config = require('config');
+const logger = require('../pino')(config.pino);
 
-const logger = require('../pino')();
-
-async function createConnection(url, options = {}) {
-	const {
-		maxPoolSize = 4,
-		minPoolSize = 1,
-		isLogging = true,
-		timeout = 60000
-	} = options;
-
+async function createConnection(url, {
+	maxPoolSize = 4,
+	minPoolSize = 1,
+	isLogging = true,
+	decimalNumbers = true,
+	timeout = 60000
+} = {}) {
 	console.log(`connecting ${url}...`);
 
 	let logging = console.log;

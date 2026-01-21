@@ -60,7 +60,7 @@ const options = {
 		},
 		{
 			unique: true,
-			fields: ['commentId'],
+			fields: ['tenantId', 'username'],
 		},
 	],
 	paranoid: true,

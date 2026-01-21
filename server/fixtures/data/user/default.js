@@ -14,7 +14,7 @@ module.exports = [
 		id: 2,
 		tenantId: 1,
 		username: 'defaultagent',
-		type: ENUM_USER_TYPE.ZHAOSHANG,
+		type: ENUM_USER_TYPE.MANAGER,
 		secret: 'ZOzx2/dpTkb87yq/o6tdtnCpM113ZQe8gp4TPUxqgow=',
 	},
 	{

@@ -1,3 +1,4 @@
+const { get } = require('config');
 const { createConnection } = require('./connection');
 
 let sequelize = null;
@@ -5,7 +6,7 @@ let sequelize = null;
 async function init () {
 	// singleton pattern
 	if (!sequelize) {
-		sequelize = await createConnection();
+		sequelize = await createConnection(process.env.MYSQL_CONNECTION_STRING);
 	}
 
 	return sequelize;

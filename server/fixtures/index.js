@@ -1,16 +1,18 @@
-const { initDB } = require('../../utils/db/initializer');
+const { init } = require('../../utils/db');
 
 module.exports = async function () {
 	try {
-		await initDB();
+		require('dotenv').config();
+
+		await init();
 
 		// require('../models/association');
 
 		await require('./fixture-outboxes').drop();
 		await require('./fixture-kujis').drop();
+		await require('./fixture-users').drop();
 
-		await require('./fixture-outboxes').init();
-		await require('./fixture-kujis').init();
+		await require('./fixture-users').create();
 
 	} catch (error) {
 		console.log(error);
