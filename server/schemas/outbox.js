@@ -1,10 +1,5 @@
 const Sequelize = require('sequelize');
-const ENUM_OUTBOX_STATUS = {
-	PENDING: 1,
-	PROCESSED: 2,
-	FAILED: 3,
-	DONE: 4,
-};
+const { ENUM_OUTBOX_STATUS } = require('../lib/enum');
 const schema = {
 	id: {
 		type: Sequelize.BIGINT.UNSIGNED,

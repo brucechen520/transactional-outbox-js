@@ -1,0 +1,25 @@
+{
+	"mysql": {
+		"sqlLogging": true,
+		"maxPoolSize": 100,
+		"minPoolSize": 10
+	},
+	"fastify": {
+		"bodyLimit": 1048576,
+		"host": "localhost",
+		"port": 3002
+	},
+	"pino": {
+		"level": "info",
+		"redact": {
+			"paths": [
+				"['request.body'].prePassword",
+				"['request.body'].password",
+				"['request.body'].confirmedPassword",
+				"['request.body'].content",
+				"['request.body'].token"
+			]
+		},
+		"prettyPrint": false
+	}
+}
