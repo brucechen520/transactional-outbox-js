@@ -1,14 +1,16 @@
-class Transaction {
-	static sequelize;
+const { getSequelize } = require('./index');
 
+class Transaction {
 	constructor({
+		sequelize = getSequelize(),
 		isolationLevel,
 	} = {}) {
 		this.isolationLevel = isolationLevel;
+		this.sequelize = sequelize;
 	}
 
 	async commit(operations) {
-		return await Transaction.sequelize.transaction({
+		return await this.sequelize.transaction({
 			isolationLevel: this.isolationLevel,
 		}, operations);
 	}

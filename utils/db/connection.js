@@ -4,21 +4,22 @@ const Transaction = require('./transaction');
 
 const logger = require('../pino')();
 
-async function createConnection(url, {
-	maxPoolSize = 4,
-	minPoolSize = 1,
-	logging = false,
-	timeout = 60000,
-	decimalNumbers = true,
-} = {}) {
+async function createConnection(url, options = {}) {
+	const {
+		maxPoolSize = 4,
+		minPoolSize = 1,
+		isLogging = true,
+		timeout = 60000
+	} = options;
+
 	console.log(`connecting ${url}...`);
 
-	if (logging === true) {
-		logging = console.log;
-	} else {
+	let logging = console.log;
+
+	if (!isLogging) {
 		logging = (sql, timing) => {
 			if (timing >= 3000) {
-				logger.warn(`${sql} Elapsed time: ${timing}ms (slow query)`);
+				logger.warn(`Elapsed time: ${timing}ms (slow query): ${sql}`);
 			}
 		};
 	}
@@ -97,207 +98,207 @@ async function createConnection(url, {
 
 	console.log(`✔ connected ${url}`);
 
-	module.exports.sequelize = sequelize;
-	Transaction.sequelize = sequelize;
 
 	return sequelize;
 };
 
-async function createTTLSchedule({
-	eventName,
-	table,
-	where,
-	column,
-	expiredAfterSeconds,
-}) {
-	const { sequelize } = module.exports;
+module.exports = { createConnection };
 
-	if (eventName === undefined) {
-		eventName = `ttl_${table}`;
-	}
+// async function createTTLSchedule({
+// 	eventName,
+// 	table,
+// 	where,
+// 	column,
+// 	expiredAfterSeconds,
+// }) {
+// 	const { sequelize } = module.exports;
 
-	where = where !== undefined ? where += ' &&' : '';
+// 	if (eventName === undefined) {
+// 		eventName = `ttl_${table}`;
+// 	}
 
-	await sequelize.query(
-		`DROP EVENT IF EXISTS \`${eventName}\`;`
-	);
+// 	where = where !== undefined ? where += ' &&' : '';
 
-	await sequelize.query(
-		`CREATE EVENT \`${eventName}\` ` +
-		`ON SCHEDULE EVERY 60 SECOND ` +
-		"DO BEGIN " +
-		`DELETE FROM \`${table}\` WHERE ${where} ${column} < NOW() - INTERVAL ${expiredAfterSeconds} SECOND; ` +
-		"END"
-	);
+// 	await sequelize.query(
+// 		`DROP EVENT IF EXISTS \`${eventName}\`;`
+// 	);
 
-	await sequelize.query(
-		`ALTER TABLE \`${table}\` ADD INDEX (${column})`
-	);
-};
+// 	await sequelize.query(
+// 		`CREATE EVENT \`${eventName}\` ` +
+// 		`ON SCHEDULE EVERY 60 SECOND ` +
+// 		"DO BEGIN " +
+// 		`DELETE FROM \`${table}\` WHERE ${where} ${column} < NOW() - INTERVAL ${expiredAfterSeconds} SECOND; ` +
+// 		"END"
+// 	);
 
-async function createSimpleTTLSchedule({
-	table, expiredAfterSeconds, interval = 60,
-}) {
-	const { sequelize } = module.exports;
+// 	await sequelize.query(
+// 		`ALTER TABLE \`${table}\` ADD INDEX (${column})`
+// 	);
+// };
 
-	await sequelize.query(
-		`DROP EVENT IF EXISTS drop_expired_${table};`
-	);
+// async function createSimpleTTLSchedule({
+// 	table, expiredAfterSeconds, interval = 60,
+// }) {
+// 	const { sequelize } = module.exports;
 
-	await sequelize.query(
-		`CREATE EVENT drop_expired_${table} ` +
-		`ON SCHEDULE EVERY ${interval} SECOND ` +
-		"DO BEGIN " +
-		`DELETE FROM ${table} WHERE createdAt < NOW() - INTERVAL ${expiredAfterSeconds} SECOND; ` +
-		"END"
-	);
+// 	await sequelize.query(
+// 		`DROP EVENT IF EXISTS drop_expired_${table};`
+// 	);
 
-	await sequelize.query(
-		`ALTER TABLE ${table} ADD INDEX created_at(createdAt)`
-	);
-};
+// 	await sequelize.query(
+// 		`CREATE EVENT drop_expired_${table} ` +
+// 		`ON SCHEDULE EVERY ${interval} SECOND ` +
+// 		"DO BEGIN " +
+// 		`DELETE FROM ${table} WHERE createdAt < NOW() - INTERVAL ${expiredAfterSeconds} SECOND; ` +
+// 		"END"
+// 	);
 
-async function createListPartitionTTLSchedule({
-	table, ttl, partitions, interval = 60,
-}) {
-	const { sequelize } = module.exports;
+// 	await sequelize.query(
+// 		`ALTER TABLE ${table} ADD INDEX created_at(createdAt)`
+// 	);
+// };
 
-	const dividedPartitions = [];
+// async function createListPartitionTTLSchedule({
+// 	table, ttl, partitions, interval = 60,
+// }) {
+// 	const { sequelize } = module.exports;
 
-	for (let i = 0; i < partitions; i++) {
-		dividedPartitions.push(`PARTITION p${i} VALUES IN (${i})`);
-	}
+// 	const dividedPartitions = [];
 
-	await sequelize.query(
-		`ALTER TABLE ${table} MODIFY COLUMN pid TINYINT(4) GENERATED ALWAYS AS (floor(TO_SECONDS(createdAt)/${ttl})%${partitions}) STORED NOT NULL;`
-	);
+// 	for (let i = 0; i < partitions; i++) {
+// 		dividedPartitions.push(`PARTITION p${i} VALUES IN (${i})`);
+// 	}
 
-	await sequelize.query(
-		`ALTER TABLE ${table} DROP PRIMARY KEY, ADD PRIMARY KEY(id, pid);`
-	);
+// 	await sequelize.query(
+// 		`ALTER TABLE ${table} MODIFY COLUMN pid TINYINT(4) GENERATED ALWAYS AS (floor(TO_SECONDS(createdAt)/${ttl})%${partitions}) STORED NOT NULL;`
+// 	);
 
-	await sequelize.query(
-		`ALTER TABLE ${table} PARTITION BY LIST (pid) (${dividedPartitions.join(",")});`
-	);
+// 	await sequelize.query(
+// 		`ALTER TABLE ${table} DROP PRIMARY KEY, ADD PRIMARY KEY(id, pid);`
+// 	);
 
-	const truncatedPartitions = [];
+// 	await sequelize.query(
+// 		`ALTER TABLE ${table} PARTITION BY LIST (pid) (${dividedPartitions.join(",")});`
+// 	);
 
-	for (let i = 0; i < partitions; i++) {
-		if (i === (partitions - 1)) {
-			truncatedPartitions.push(`WHEN ${i} THEN ALTER TABLE ${table} TRUNCATE PARTITION p0`);
-		} else {
-			truncatedPartitions.push(`WHEN ${i} THEN ALTER TABLE ${table} TRUNCATE PARTITION p${i + 1}`);
-		}
-	}
+// 	const truncatedPartitions = [];
 
-	await sequelize.query(
-		`DROP EVENT IF EXISTS ttl_${table};`
-	);
+// 	for (let i = 0; i < partitions; i++) {
+// 		if (i === (partitions - 1)) {
+// 			truncatedPartitions.push(`WHEN ${i} THEN ALTER TABLE ${table} TRUNCATE PARTITION p0`);
+// 		} else {
+// 			truncatedPartitions.push(`WHEN ${i} THEN ALTER TABLE ${table} TRUNCATE PARTITION p${i + 1}`);
+// 		}
+// 	}
 
-	await sequelize.query(
-		`CREATE EVENT ttl_${table} ` +
-		`ON SCHEDULE EVERY ${interval} SECOND ` +
-		"DO BEGIN " +
-		`CASE FLOOR(TO_SECONDS(NOW())/${ttl})%${partitions} ` +
-		`${truncatedPartitions.join(";")}; ` +
-		"END CASE; " +
-		"END"
-	);
-};
+// 	await sequelize.query(
+// 		`DROP EVENT IF EXISTS ttl_${table};`
+// 	);
 
-async function createRangePartitionTTLSchedule({
-	database,
-	table,
-	partitionedByDays = 10,
-	expiredAfterDays,
-}) {
-	const {
-		sequelize,
-		createSchedule,
-	} = module.exports;
+// 	await sequelize.query(
+// 		`CREATE EVENT ttl_${table} ` +
+// 		`ON SCHEDULE EVERY ${interval} SECOND ` +
+// 		"DO BEGIN " +
+// 		`CASE FLOOR(TO_SECONDS(NOW())/${ttl})%${partitions} ` +
+// 		`${truncatedPartitions.join(";")}; ` +
+// 		"END CASE; " +
+// 		"END"
+// 	);
+// };
 
-	if (database === undefined || table === undefined) {
-		throw new Error("database & table required");
-	}
+// async function createRangePartitionTTLSchedule({
+// 	database,
+// 	table,
+// 	partitionedByDays = 10,
+// 	expiredAfterDays,
+// }) {
+// 	const {
+// 		sequelize,
+// 		createSchedule,
+// 	} = module.exports;
 
-	await sequelize.query(
-		`ALTER TABLE ${table} DROP PRIMARY KEY, ADD PRIMARY KEY(id, createdAt)`
-	);
+// 	if (database === undefined || table === undefined) {
+// 		throw new Error("database & table required");
+// 	}
 
-	await sequelize.query(
-		`ALTER TABLE ${table} PARTITION BY RANGE(TO_DAYS(createdAt)) (
-			PARTITION p0 VALUES LESS THAN (0)
-		)`
-	);
+// 	await sequelize.query(
+// 		`ALTER TABLE ${table} DROP PRIMARY KEY, ADD PRIMARY KEY(id, createdAt)`
+// 	);
 
-	await createSchedule({
-		name: `create_new_${table}_partition`,
-		job: `
-			SET @day_after_interval = TO_DAYS(ADDDATE(CURRENT_DATE(), INTERVAL ${partitionedByDays} DAY));
-			SELECT PARTITION_DESCRIPTION INTO @latest_partition_in_day FROM INFORMATION_SCHEMA.PARTITIONS
-			WHERE TABLE_SCHEMA="${database}" AND TABLE_NAME="${table}" ORDER BY PARTITION_DESCRIPTION DESC LIMIT 1;
-			IF @latest_partition_in_day = 0 THEN
-				SET @new_parition_in_date = DATE_FORMAT(FROM_DAYS(@day_after_interval), "%Y_%m_%d");
-				SET @q = CONCAT(
-					'ALTER TABLE ${table} ADD PARTITION (PARTITION p', @new_parition_in_date, ' VALUES LESS THAN (', @day_after_interval, '))'
-				);
-				PREPARE stmt FROM @q;
-				EXECUTE stmt;
-			ELSEIF @latest_partition_in_day <= @day_after_interval THEN
-				SELECT @new_partition_in_day := SUM(@latest_partition_in_day + ${partitionedByDays});
-				SET @new_parition_in_date = DATE_FORMAT(FROM_DAYS(@new_partition_in_day), "%Y_%m_%d");
-				SET @q = CONCAT(
-					'ALTER TABLE ${table} ADD PARTITION (PARTITION p', @new_parition_in_date, ' VALUES LESS THAN (', @new_partition_in_day, '))'
-				);
-				PREPARE stmt FROM @q;
-				EXECUTE stmt;
-			END IF;
-		`,
-	});
+// 	await sequelize.query(
+// 		`ALTER TABLE ${table} PARTITION BY RANGE(TO_DAYS(createdAt)) (
+// 			PARTITION p0 VALUES LESS THAN (0)
+// 		)`
+// 	);
 
-	await createSchedule({
-		name: `drop_expired_${table}_partition`,
-		job: `
-			SELECT PARTITION_NAME INTO @expired_partition_name FROM INFORMATION_SCHEMA.PARTITIONS
-			WHERE TABLE_SCHEMA="${database}" AND TABLE_NAME="${table}" AND PARTITION_NAME != "p0"
-			AND PARTITION_DESCRIPTION <= TO_DAYS(SUBDATE(current_date(), INTERVAL ${expiredAfterDays} DAY))
-			ORDER BY PARTITION_DESCRIPTION ASC LIMIT 1;
-			IF @expired_partition_name IS NOT NULL THEN
-				SET @q = CONCAT("ALTER TABLE ${table} DROP PARTITION ", @expired_partition_name);
-				PREPARE stmt FROM @q;
-				EXECUTE stmt;
-			END IF;
-		`,
-	});
-};
+// 	await createSchedule({
+// 		name: `create_new_${table}_partition`,
+// 		job: `
+// 			SET @day_after_interval = TO_DAYS(ADDDATE(CURRENT_DATE(), INTERVAL ${partitionedByDays} DAY));
+// 			SELECT PARTITION_DESCRIPTION INTO @latest_partition_in_day FROM INFORMATION_SCHEMA.PARTITIONS
+// 			WHERE TABLE_SCHEMA="${database}" AND TABLE_NAME="${table}" ORDER BY PARTITION_DESCRIPTION DESC LIMIT 1;
+// 			IF @latest_partition_in_day = 0 THEN
+// 				SET @new_parition_in_date = DATE_FORMAT(FROM_DAYS(@day_after_interval), "%Y_%m_%d");
+// 				SET @q = CONCAT(
+// 					'ALTER TABLE ${table} ADD PARTITION (PARTITION p', @new_parition_in_date, ' VALUES LESS THAN (', @day_after_interval, '))'
+// 				);
+// 				PREPARE stmt FROM @q;
+// 				EXECUTE stmt;
+// 			ELSEIF @latest_partition_in_day <= @day_after_interval THEN
+// 				SELECT @new_partition_in_day := SUM(@latest_partition_in_day + ${partitionedByDays});
+// 				SET @new_parition_in_date = DATE_FORMAT(FROM_DAYS(@new_partition_in_day), "%Y_%m_%d");
+// 				SET @q = CONCAT(
+// 					'ALTER TABLE ${table} ADD PARTITION (PARTITION p', @new_parition_in_date, ' VALUES LESS THAN (', @new_partition_in_day, '))'
+// 				);
+// 				PREPARE stmt FROM @q;
+// 				EXECUTE stmt;
+// 			END IF;
+// 		`,
+// 	});
 
-async function createSchedule({
-	name,
-	job,
-}) {
-	const { sequelize } = module.exports;
+// 	await createSchedule({
+// 		name: `drop_expired_${table}_partition`,
+// 		job: `
+// 			SELECT PARTITION_NAME INTO @expired_partition_name FROM INFORMATION_SCHEMA.PARTITIONS
+// 			WHERE TABLE_SCHEMA="${database}" AND TABLE_NAME="${table}" AND PARTITION_NAME != "p0"
+// 			AND PARTITION_DESCRIPTION <= TO_DAYS(SUBDATE(current_date(), INTERVAL ${expiredAfterDays} DAY))
+// 			ORDER BY PARTITION_DESCRIPTION ASC LIMIT 1;
+// 			IF @expired_partition_name IS NOT NULL THEN
+// 				SET @q = CONCAT("ALTER TABLE ${table} DROP PARTITION ", @expired_partition_name);
+// 				PREPARE stmt FROM @q;
+// 				EXECUTE stmt;
+// 			END IF;
+// 		`,
+// 	});
+// };
 
-	if (!name || !job) {
-		throw new Error('missing name or job');
-	}
+// async function createSchedule({
+// 	name,
+// 	job,
+// }) {
+// 	const { sequelize } = module.exports;
 
-	await sequelize.query(`DROP EVENT IF EXISTS ${name};`);
+// 	if (!name || !job) {
+// 		throw new Error('missing name or job');
+// 	}
 
-	const script = `
-		CREATE EVENT ${name}
-		ON SCHEDULE EVERY 1 HOUR
-		DO BEGIN ${job}
-		END;
-	`;
+// 	await sequelize.query(`DROP EVENT IF EXISTS ${name};`);
 
-	return sequelize.query(script);
-};
+// 	const script = `
+// 		CREATE EVENT ${name}
+// 		ON SCHEDULE EVERY 1 HOUR
+// 		DO BEGIN ${job}
+// 		END;
+// 	`;
 
-module.exports = {
-	createConnection,
-	createTTLSchedule,
-	createSimpleTTLSchedule,
-	createListPartitionTTLSchedule,
-	createRangePartitionTTLSchedule,
-	createSchedule,
-};
+// 	return sequelize.query(script);
+// };
+
+// module.exports = {
+// 	createConnection,
+// 	createTTLSchedule,
+// 	createSimpleTTLSchedule,
+// 	createListPartitionTTLSchedule,
+// 	createRangePartitionTTLSchedule,
+// 	createSchedule,
+// };
