@@ -56,11 +56,8 @@ const options = {
 	indexes: [
 		{
 			unique: true,
-			fields: ['username'],
-		},
-		{
-			unique: true,
 			fields: ['tenantId', 'username'],
+			name: 'users_tenant_id_username_unique',
 		},
 	],
 	paranoid: true,

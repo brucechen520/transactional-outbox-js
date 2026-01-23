@@ -26,3 +26,17 @@ CREATE TABLE IF NOT EXISTS `outboxes` (
 CREATE INDEX outboxes_status_created_at ON outboxes (status, createdAt);
 -- 4. 建立 index 在 kuji_orders 的 userId 欄位上以提升查詢效能
 CREATE INDEX kuji_orders_user_id ON kuji_orders (userId);
+-- 5. 建立 users 表 (欄位使用駝峰式)
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `tenantId` INT UNSIGNED NOT NULL,
+  `username` VARCHAR(255) NOT NULL,
+  `type` TINYINT UNSIGNED NOT NULL,
+  `secret` VARCHAR(255) NOT NULL,
+  `status` TINYINT UNSIGNED NOT NULL DEFAULT 1, -- 假設 ENUM_USER_STATUS.ENABLED 為 1
+  `createdAt` DATETIME NOT NULL,
+  `updatedAt` DATETIME NOT NULL,
+  `deletedAt` DATETIME DEFAULT NULL, -- 因為設定了 paranoid: true
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `users_tenant_id_username_unique` (`tenantId`, `username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
