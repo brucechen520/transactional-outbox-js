@@ -57,4 +57,5 @@ The core philosophy is: **"Instead of sending the message directly, store the me
 ---
 
 ## Transactional Outbox Pattern Sequence Diagram
-![aws-transactional-outbox-pattern](readme-photos/aws-transactional-outbox-pattern.png)
+- [AWS Transactional outbox pattern Doc](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+![aws-transactional-outbox-pattern](https://docs.aws.amazon.com/images/prescriptive-guidance/latest/cloud-design-patterns/images/outbox-1.png)
