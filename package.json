@@ -1,6 +1,10 @@
 {
   "name": "transactional-outbox-pattern",
   "version": "1.0.0",
+  "scripts": {
+    "test-sql": "node bin/test-sql.js",
+    "test-scenario": "node bin/test-scenario.js"
+  },
   "dependencies": {
     "config": "^4.2.0",
     "cross-env": "^10.1.0",

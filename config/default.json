@@ -21,5 +21,46 @@
 			]
 		},
 		"prettyPrint": false
+	},
+	"kafka": {
+		"client": {
+			"clientId": "my-awesome-service",
+			"brokers": ["localhost:9092"],
+			"logLevel": "warn",
+			"connectionTimeout": 5000,
+			"requestTimeout": 30000,
+			"retry": {
+				"initialRetryTime": 300,
+				"retries": 10,
+				"maxRetryTime": 30000,
+				"factor": 0.2
+			}
+		},
+		"security": {
+			"enableSsl": true,
+			"sasl": {
+				"mechanism": "scram-sha-512",
+				"username": "${KAFKA_USERNAME}",
+				"password": "${KAFKA_PASSWORD}"
+			}
+		},
+		"producer": {
+			"allowAutoTopicCreation": false,
+			"idempotent": true,
+			"transactionalId": "service-tx-id",
+			"acks": -1,
+			"compression": "snappy"
+		},
+		"consumer": {
+			"groupIdPrefix": "service-consumer-",
+			"sessionTimeout": 30000,
+			"heartbeatInterval": 10000,
+			"rebalanceTimeout": 60000,
+			"allowAutoTopicCreation": false,
+			"maxBytesPerPartition": 1048576,
+			"retry": {
+				"retries": 5
+			}
+		}
 	}
 }

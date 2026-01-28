@@ -1,3 +1,4 @@
 module.exports = {
-	KafkaClient: require('./client'),
+	BaseProducer: require('./producer'),
+	BaseConsumer: require('./consumer'),
 };

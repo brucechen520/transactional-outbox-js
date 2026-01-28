@@ -6,14 +6,20 @@ const logger = require('../pino')({
 class BaseProducer {
 	constructor(kafkaInstance) {
 		this.producer = kafkaInstance.producer({
-			// 架構師建議：開啟冪等性以保證 Data Consistency
-			idempotent: true,
-			maxInFlightRequests: 1
+			idempotent: true, // 開啟冪等性以保證 Data Consistency
+			maxInFlightRequests: 1 // 保證訊息順序性
 		});
+
+		this.isConnected = false;
 	}
 
 	async connect() {
-		await this.producer.connect();
+		if (!this.isConnected) {
+			await this.producer.connect();
+
+			this.isConnected = true;
+			logger.info('Kafka Producer connected successfully.');
+		}
 	}
 
 	/**
@@ -22,7 +28,7 @@ class BaseProducer {
 	 * @param {object} payload 業務資料
 	 * @param {string} key 訊息 Key (用於保證順序性)
 	 */
-	async send(topic, payload, key = null) {
+	async send(topic, payload, key = 'default:key') {
 		try {
 			const result = await this.producer.send({
 				topic,
@@ -30,7 +36,7 @@ class BaseProducer {
 					{
 						key,
 						value: JSON.stringify({
-							data: payload,
+							payload,
 							timestamp: Date.now(),
 							// 可以在此注入 TraceID 供鏈路追蹤
 						})
@@ -47,6 +53,8 @@ class BaseProducer {
 
 	async disconnect() {
 		await this.producer.disconnect();
+
+		this.isConnected = false;
 	}
 }
 

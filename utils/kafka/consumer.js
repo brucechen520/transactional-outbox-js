@@ -27,7 +27,7 @@ class BaseConsumer {
 					await messageHandler(parsedValue, { partition, offset: message.offset });
 
 				} catch (error) {
-					// 架構師建議：在此實作重試或發送到死信隊列 (DLQ)
+					// TODO: 在此實作重試或發送到死信隊列 (DLQ)
 					logger.error(`Consumer Error on topic ${topic}:`, error.message);
 				}
 			},
