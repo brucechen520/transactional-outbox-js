@@ -10,7 +10,8 @@
     "mysql2": "3.16.0",
     "pino": "^10.2.1",
     "sequelize": "6.37.7",
-    "uuid": "9.0.1"
+    "uuid": "9.0.1",
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
     "nodemon": "3.0.1"

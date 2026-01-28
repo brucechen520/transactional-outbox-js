@@ -1,4 +1,3 @@
-const { get } = require('config');
 const { createConnection } = require('./connection');
 
 let sequelize = null;
