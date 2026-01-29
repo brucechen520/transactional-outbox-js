@@ -7,7 +7,6 @@ const { kafka: kafkaConfig } = require('config');
 const ProducerWrapper = require('./producer');
 const ConsumerWrapper = require('./consumer');
 
-
 class KafkaClient {
 	constructor(config) {
 		this.kafka = new Kafka({
