@@ -13,8 +13,6 @@ async function testConnection() {
 	try {
 		const sequelize = await init();
 
-		console.log(KafkaClient.getInstance());
-
 		await KafkaClient.testConnection();
 
 		const fastify = require('../utils/fastify');
@@ -27,14 +25,33 @@ async function testConnection() {
 		}).then(() => {
 			logger.info(`🚀 Server is running at http://${serverConfig.host}:${serverConfig.port}`);
 		}).catch(async (err) => {
-			logger.error(`Failed to start server:`, err);
+			logger.error({ err }, 'Failed to start server:');
 
-			await KafkaClient.disconnectAll();
+			await fastify.close();
 
 			process.exit(1);
 		});
+
+		// 監聽系統中斷訊號
+		['SIGINT', 'SIGTERM'].forEach((signal) => {
+			process.on(signal, async () => {
+			fastify.log.warn(`收到 ${signal} 訊號，準備關閉服務...`);
+
+			try {
+				// 呼叫此方法會觸發所有插件中的 onClose 鉤子
+				await fastify.close();
+				fastify.log.info('👋 服務已完全關閉');
+				process.exit(0);
+			} catch (err) {
+				fastify.log.error({ err }, '關閉服務時發生錯誤:');
+				process.exit(1);
+			}
+			});
+		});
 	} catch (error) {
-		logger.error('Unable to connect to the database:', error);
+		console.log(error);
+
+		// logger.error('Unable to connect to the database:', text);
 		process.exit(1);
 	}
 }

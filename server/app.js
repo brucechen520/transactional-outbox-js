@@ -1,7 +1,5 @@
 module.exports = function (fastify) {
-	require('../models');
+	require('../utils/fastify/plugins')(fastify);
 
-	const fastify = require('../utils/fastify');
-
-
+	fastify.register(require('./routes'), { prefix: '/api/v1' });
 };
