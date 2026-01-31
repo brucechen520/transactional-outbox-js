@@ -1,5 +1,6 @@
 const config = require('config');
 const { server: serverConfig, ajv: ajvConfig } = config;
+const { errorHandler } = require('./hooks');
 
 const fastify = require('fastify')({
 	// 1. 日誌配置：生產環境與開發環境分離
@@ -33,5 +34,7 @@ const fastify = require('fastify')({
 		},
 	},
 });
+
+fastify.setErrorHandler(errorHandler);
 
 module.exports = fastify;

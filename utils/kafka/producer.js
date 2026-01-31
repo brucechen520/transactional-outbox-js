@@ -28,7 +28,11 @@ class BaseProducer {
 	 * @param {object} payload 業務資料
 	 * @param {string} key 訊息 Key (用於保證順序性)
 	 */
-	async send(topic, payload, key = 'default:key') {
+	async send({
+		topic,
+		payload,
+		key = 'default:key',
+	}) {
 		try {
 			const result = await this.producer.send({
 				topic,

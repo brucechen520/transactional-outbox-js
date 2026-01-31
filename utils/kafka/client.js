@@ -1,4 +1,4 @@
-const { Kafka } = require('kafkajs');
+const { Kafka, logLevel } = require('kafkajs');
 const logger = require('../pino')({
 	level: 'debug',
 	prettyPrint: false,
@@ -6,6 +6,25 @@ const logger = require('../pino')({
 const { kafka: kafkaConfig } = require('config');
 const ProducerWrapper = require('./producer');
 const ConsumerWrapper = require('./consumer');
+const logCreator = (level) => ({ namespace, level, label, log }) => {
+	// 💡 關鍵修正：確保 log 物件存在，並安全地取出訊息
+	const message = log?.message || 'No message provided';
+	const { stack, ...extra } = log;
+
+	switch (level) {
+		case logLevel.ERROR:
+			logger.error({ namespace, ...extra, stack }, message);
+			break;
+		case logLevel.WARN:
+			logger.warn({ namespace, ...extra }, message);
+			break;
+		case logLevel.INFO:
+			logger.info({ namespace, ...extra }, message);
+			break;
+		default:
+			logger.debug({ namespace, ...extra }, message);
+	}
+};
 
 class KafkaClient {
 	constructor(config) {
@@ -13,9 +32,7 @@ class KafkaClient {
 			clientId: config.clientId || 'my-app',
 			brokers: config.brokers,
 			// 建議：將日誌導向至專案使用的 Logger (如 Pino 或 Winston)
-			logCreator: (level) => ({ entry }) => {
-				logger.log(`[Kafka] ${entry.message}`, entry);
-			},
+			logCreator,
 			// 資安建議：生產環境務必使用 SSL/SASL
 			ssl: config.ssl || false,
 			sasl: config.sasl,
@@ -65,6 +82,7 @@ class KafkaClient {
 			this._sharedProducer = new ProducerWrapper(this.kafka);
 			await this._sharedProducer.connect();
 		}
+
 		return this._sharedProducer;
 	}
 
@@ -88,7 +106,7 @@ class KafkaClient {
 				await consumer.disconnect();
 			});
 
-			logger.log('All Kafka connections closed.');
+			logger.info('All Kafka connections closed.');
 		} catch(error) {
 			logger.error('Error disconnecting Kafka clients:', error);
 		}
