@@ -15,19 +15,19 @@ class ApiError extends Error {
 		return new ApiError(code, message, 400, details);
 	}
 
-	static Unauthorized(message = '請先登入') {
+	static Unauthorized(message = '請先登入', code = 'UNAUTHORIZED_ERROR', details = null) {
 		return new ApiError('UNAUTHORIZED', message, 401);
 	}
 
-	static Forbidden(message = '權限不足') {
+	static Forbidden(message = '權限不足', code = 'FORBIDDENED_ERROR', details = null) {
 		return new ApiError('FORBIDDEN', message, 403);
 	}
 
-	static NotFound(message = '找不到該項資源') {
+	static NotFound(message = '找不到該項資源', code = 'NOTFOUND_ERROR', details = null) {
 		return new ApiError('NOT_FOUND', message, 404);
 	}
 
-	static Internal(message = '伺服器內部錯誤') {
+	static Internal(message = '伺服器內部錯誤', code = 'INTERNAL_ERROR', details = null) {
 		return new ApiError('INTERNAL_ERROR', message, 500);
 	}
 }

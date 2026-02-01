@@ -9,11 +9,7 @@ module.exports = {
 			type: 'string',
 		},
 		details: {
-			type: ['array', 'null'],
-			items: {
-				type: 'object',
-				additionalProperties: true,
-			},
+			type: ['string', 'null'],
 		}
 	},
 };

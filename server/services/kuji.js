@@ -6,6 +6,7 @@ const logger = require('../../utils/pino')({
 	level: 'debug',
 	prettyPrint: false,
 });
+const ApiError = require('../../utils/fastify/error');
 
 async function badScenarioWithDB() {
 	const producer = await KafkaClient.getProducer();
@@ -46,6 +47,29 @@ async function badScenarioWithDB() {
 
 async function badScenarioWithMQ() {
 	const producer = await KafkaClient.getProducer();
+
+	logger.info('開始新增一番賞訂單');
+
+	const kujiOrder = await KujiStore.createKujiOrder({
+		id: 1,
+		userId: 1,
+		prizeName: '魯夫',
+	});
+
+	logger.info('開始送出資料到 kafka');
+
+	throw ApiError.Internal('kafka rebalance error', 'KAFKA_REBLANCE_ERROR');
+
+	// 2. 發送 Kafka (假設成功)
+	await producer.send({
+		topic: 'kuji-topic',
+		payload: {
+			id: 1,
+			userId: 1,
+			prizeName: '魯夫',
+		},
+		key: 'kuji:order:created',
+	});
 }
 
 module.exports = {
