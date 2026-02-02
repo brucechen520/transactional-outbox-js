@@ -1,12 +1,16 @@
+const Sequelize = require('sequelize');
 const KujiStore = require('../stores/kuji');
 const OutboxStore = require('../stores/outbox');
+const UserStore = require('../stores/user');
 const KafkaClient = require('../../utils/kafka/client');
 const { getSequelize } = require('../../utils/db');
+const Transaction = require('../../utils/db/transaction');
 const logger = require('../../utils/pino')({
 	level: 'debug',
 	prettyPrint: false,
 });
 const ApiError = require('../../utils/fastify/error');
+const { ENUM_OUTBOX_STATUS } = require('../lib/enum');
 
 /**
  * ❌ 錯誤示範：Kafka有資料寫進去，但在 db.commit前，db發生 rollback 或 connection closed，導致「沒訂單、有訊息」，俗稱 zombie data
@@ -129,8 +133,50 @@ async function badScenarioWithConnectionPoolExhaustion() {
 	}
 }
 
+async function createKujiOrder({
+	requestId,
+	userId,
+	prizeName,
+}) {
+	const user = await UserStore.getUserById(userId, {
+		attributes: ['id'],
+	});
+
+	if (user === null) {
+		throw ApiError.NotFound('user not found', 'USER_NOT_FOUND_ERROR');
+	}
+
+	try {
+		const txn = new Transaction();
+
+		const handle = async function (transaction) {
+			const kujiOrder = await KujiStore.createKujiOrder({
+				userId,
+				prizeName,
+			}, { transaction });
+
+			await OutboxStore.createOutbox({
+				topic: 'kuji:order:created',
+				payload: { userId, kujiOrderId: kujiOrder.id, requestId },
+				status: ENUM_OUTBOX_STATUS.PENDING,
+			}, { transaction });
+
+			return kujiOrder;
+		};
+
+		return await txn.commit(handle);
+	} catch (error) {
+		if (error instanceof Sequelize.UniqueConstraintError) {
+			throw ApiError.Conflict('kuji order conflicted', 'KUJI_ORDER_CONFLICT');
+		}
+
+		throw error;
+	}
+}
+
 module.exports = {
 	badScenarioWithDB,
 	badScenarioWithMQ,
 	badScenarioWithConnectionPoolExhaustion,
+	createKujiOrder,
 };

@@ -3,10 +3,10 @@ module.exports = {
 	type: 'object',
 	properties: {
 		id: {
-			type: 'integer',
+			$ref: 'common#/properties/id',
 		},
 		userId: {
-			type: 'integer',
+			$ref: 'user#/properties/id',
 		},
 		prizeName: {
 			type: 'string',

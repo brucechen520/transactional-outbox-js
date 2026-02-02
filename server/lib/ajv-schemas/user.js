@@ -5,10 +5,10 @@ module.exports = {
 	type: 'object',
 	properties: {
 		id: {
-			type: 'integer',
+			$ref: 'common#/properties/id',
 		},
 		tenantId: {
-			type: 'integer',
+			$ref: 'common#/properties/id',
 		},
 		userName: {
 			type: 'string',

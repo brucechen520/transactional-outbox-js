@@ -7,6 +7,10 @@
 - init schemas
 	- `node init-fixture.js`
 
+# Scenario Introduction
+## Bad Scenario
+- see [Bad Scenario README](docs/bad-scenario-dual-write-issue/README.MD)
+
 # Transactional Outbox Pattern Implementation Guide
 ## 📝 The Motivation: Why This Pattern?
 

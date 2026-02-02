@@ -24,6 +24,7 @@ const fastify = require('fastify')({
 
 	// 4. 強烈建議：自定義 ID 產生器 (利於分散式追蹤)
 	genReqId: (req) => req.headers['x-request-id'] || require('crypto').randomUUID(),
+	requestIdHeader: 'x-request-id',
 
 	// 5. 調整 AJV 配置 (Fastify 內建的內容驗證器)
 	ajv: {

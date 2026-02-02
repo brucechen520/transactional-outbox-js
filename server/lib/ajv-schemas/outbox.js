@@ -5,7 +5,7 @@ module.exports = {
 	type: 'object',
 	properties: {
 		id: {
-			type: 'integer',
+			$ref: 'common#/properties/id',
 		},
 		topic: {
 			type: 'string',

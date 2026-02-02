@@ -30,6 +30,10 @@ class ApiError extends Error {
 	static Internal(message = '伺服器內部錯誤', code = 'INTERNAL_ERROR', details = null) {
 		return new ApiError('INTERNAL_ERROR', message, 500);
 	}
+
+	static Conflict(message = '資料重複', code = 'CONFLICT_ERROR', details = null) {
+		return new ApiError('CONFLICT_ERROR', message, 409);
+	}
 }
 
 module.exports = ApiError;
