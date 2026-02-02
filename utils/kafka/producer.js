@@ -2,12 +2,14 @@ const logger = require('../pino')({
 	level: 'debug',
 	prettyPrint: false,
 });
+const { Partitioners } = require('kafkajs');
 
 class BaseProducer {
 	constructor(kafkaInstance) {
 		this.producer = kafkaInstance.producer({
 			idempotent: true, // 開啟冪等性以保證 Data Consistency
-			maxInFlightRequests: 1 // 保證訊息順序性
+			maxInFlightRequests: 1, // 保證訊息順序性
+			createPartitioner: Partitioners.DefaultPartitioner, // ✅ 明確指定使用新的預設分區器，這會告訴 KafkaJS：「我知道演算法改了，我就是要用新的。」
 		});
 
 		this.isConnected = false;

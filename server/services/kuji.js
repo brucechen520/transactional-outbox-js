@@ -8,6 +8,11 @@ const logger = require('../../utils/pino')({
 });
 const ApiError = require('../../utils/fastify/error');
 
+/**
+ * ❌ 錯誤示範：Kafka有資料寫進去，但在 db.commit前，db發生 rollback 或 connection closed，導致「沒訂單、有訊息」，俗稱 zombie data
+ * 關鍵錯誤：會導致 mq的商業邏輯要回查資料庫時找不到資料。
+ * 物流系統收到 Kafka 訊息開始打包寄出，但資料庫因為 Rollback 根本沒成立訂單。結果公司平白無故把商品送給了沒付錢的人。
+ */
 async function badScenarioWithDB() {
 	const producer = await KafkaClient.getProducer();
 
@@ -45,6 +50,11 @@ async function badScenarioWithDB() {
 	await t.commit();
 }
 
+/**
+ * ❌ 錯誤示範：Kafka 發生問題導致資料沒寫進 queue導致「有訂單、沒訊息」
+ * 關鍵錯誤：會導致 mq的商業邏輯不會執行到。
+ * 資料庫執行扣款動作，但扣款後續的訂單通知、信件通知等一系列的商業邏輯都不會執行，因為 mq資料不一致。
+ */
 async function badScenarioWithMQ() {
 	const producer = await KafkaClient.getProducer();
 
@@ -72,7 +82,55 @@ async function badScenarioWithMQ() {
 	});
 }
 
+/**
+ * ❌ 錯誤示範：連線池耗盡 (Connection Pool Exhaustion)
+ * 關鍵錯誤：Transaction 就像租了一台計程車(連線)，
+ * 你卻讓計程車在路邊等你買完東西(Kafka 回應)才付錢放它走。
+ */
+async function badScenarioWithConnectionPoolExhaustion() {
+	const sequelize = await getSequelize();
+
+	// 事務開始，此時佔用一個 MySQL Connection
+	const t = await sequelize.transaction();
+
+	try {
+		const kujiOrder = await KujiStore.createKujiOrder({
+			id: 1,
+			userId: 1,
+			prizeName: '魯夫',
+		}, { transaction: t });
+
+		// ⚠️ 致命傷：在 Transaction 內部進行網路 IO
+		// 假設 Kafka 因為網路問題，回應時間從 10ms 變成 5s
+		logger.info("⏳ 等待 Kafka 回應中...");
+
+		// ⚠️ 災難開始：在 Transaction 尚未 Commit 前進行長時間的 Await
+		// 這條 DB 連線現在只能發呆，不能給其他人用
+		await new Promise(resolve => setTimeout(resolve, 61000)); // 模擬 Kafka 延遲
+
+		const producer = await KafkaClient.getProducer();
+
+		await producer.send({
+			topic: 'kuji-topic',
+			payload: {
+				id: 1,
+				userId: 1,
+				prizeName: '魯夫',
+			},
+			key: 'kuji:order:created',
+		});
+
+		await t.commit(); // 執行到這 connection才會還給 pool
+
+		return kujiOrder;
+	} catch (error) {
+		await t.rollback();
+		throw error;
+	}
+}
+
 module.exports = {
 	badScenarioWithDB,
 	badScenarioWithMQ,
+	badScenarioWithConnectionPoolExhaustion,
 };

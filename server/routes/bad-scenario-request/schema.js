@@ -4,7 +4,7 @@ module.exports = {
 		properties: {
 			kind: {
 				type: 'string',
-				enum: ['db', 'mq'],
+				enum: ['db', 'mq', 'connection_pool_exhausted'],
 				default: 'db',
 			},
 		},

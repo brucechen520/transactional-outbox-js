@@ -49,11 +49,11 @@ async function testConnection() {
 			});
 		});
 	} catch (error) {
-		console.log(error);
+		logger.error(error);
 
 		// logger.error('Unable to connect to the database:', text);
 		process.exit(1);
 	}
 }
 
-testConnection().catch(logger);
+testConnection();

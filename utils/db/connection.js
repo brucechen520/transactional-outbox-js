@@ -4,11 +4,11 @@ const config = require('config');
 const logger = require('../pino')(config.pino);
 
 async function createConnection(url, {
-	maxPoolSize = 4,
+	maxPoolSize = 1,
 	minPoolSize = 1,
 	isLogging = true,
 	decimalNumbers = true,
-	timeout = 60000
+	timeout = 5000
 } = {}) {
 	console.log(`connecting ${url}...`);
 

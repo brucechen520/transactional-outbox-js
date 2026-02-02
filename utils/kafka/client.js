@@ -36,10 +36,6 @@ class KafkaClient {
 			// 資安建議：生產環境務必使用 SSL/SASL
 			ssl: config.ssl || false,
 			sasl: config.sasl,
-			retry: {
-				initialRetryTime: 300,
-				retries: 8
-			}
 		});
 
 		this._sharedProducer = null;
