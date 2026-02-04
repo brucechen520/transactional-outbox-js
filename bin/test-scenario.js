@@ -21,7 +21,7 @@ async function testConnection() {
 
 		fastify.listen({
 			host: serverConfig.host || '127.0.0.1',
-			port: serverConfig.port || 3003,
+			port: serverConfig.port || 3000,
 		}).then(() => {
 			logger.info(`🚀 Server is running at http://${serverConfig.host}:${serverConfig.port}`);
 		}).catch(async (err) => {

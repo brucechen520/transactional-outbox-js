@@ -5,7 +5,7 @@ ENUM_USER_STATUS = Object.freeze({
 
 const ENUM_OUTBOX_STATUS = Object.freeze({
 	PENDING: 1,
-	PROCESSED: 2,
+	PROCESSING: 2,
 	FAILED: 3,
 	DONE: 4,
 });
