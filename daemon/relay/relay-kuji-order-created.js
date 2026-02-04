@@ -53,7 +53,9 @@ module.exports = async function () {
 		// 3. 更新：如果全部成功，則將整批訊息狀態更新為 DONE
 		const outboxIds = outboxes.map(o => o.id);
 
-		await updateOutboxStatusByIds(outboxIds, ENUM_OUTBOX_STATUS.DONE, { transaction });
+		await updateOutboxStatusByIds(outboxIds, {
+			status: ENUM_OUTBOX_STATUS.DONE,
+		}, { transaction });
 
 		logger.info(`[${KUJI_ORDER_CREATED}] Successfully relayed ${outboxes.length} messages.`);
 	};
