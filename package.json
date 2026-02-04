@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "test-sql": "node bin/test-sql.js",
-    "test-scenario": "node bin/test-scenario.js"
+    "test-scenario": "node bin/test-scenario.js",
+    "relay-outbox": "node bin/relay-outbox.js"
   },
   "dependencies": {
     "ajv": "8.17.1",

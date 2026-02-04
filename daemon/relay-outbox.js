@@ -1,4 +1,4 @@
-const Cron = require('croner');
+const { Cron } = require("croner");
 const relayMap = require('./relay');
 const logger = require('../utils/pino')({
 	level: 'debug',
@@ -25,5 +25,5 @@ module.exports = function () {
 	logger.info('Starting relay outbox worker...');
 
 	// 每 10 秒執行一次
-	Cron('*/10 * * * * *', { name: 'relay-outbox-worker' }, dispatch);
+	new Cron('*/10 * * * * *', { name: 'relay-outbox-worker' }, dispatch);
 };

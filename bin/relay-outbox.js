@@ -5,11 +5,19 @@ const logger = require('../utils/pino')({
 	prettyPrint: false,
 });
 
-async function testConnection() {
+require('dotenv').config();
+
+async function start() {
 	try {
 		await init();
 
 		await KafkaClient.testConnection();
+
+		const startRelayWorker = require('../daemon/relay-outbox');
+
+		// 啟動 Relay Worker 排程
+		startRelayWorker();
+
 	} catch (error) {
 		logger.error(error);
 
@@ -18,4 +26,4 @@ async function testConnection() {
 	}
 }
 
-testConnection();
+start();

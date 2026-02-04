@@ -5,46 +5,37 @@ function createOutbox(data, { transaction }) {
 	return OutboxModel.create(data, { transaction });
 }
 
-function getPendingOutboxByTopic(topic, {
+function getPendingOutboxesByTopic(topic, {
 	raw = true,
 	attributes,
 	transaction,
-	limit = 100,
+	limit = 50,
+	lock,
+	skipLocked,
 } = {}) {
 	return OutboxModel.findAll({
 		where: {
 			topic,
 			status: ENUM_OUTBOX_STATUS.PENDING,
 		},
+		order: [
+			['id', 'ASC'],
+		],
 		raw,
 		attributes,
 		transaction,
 		limit,
+		lock,
+		skipLocked,
 	});
 }
 
-async function setPendingOutboxToProcessingById(id, {
-	transaction,
-}) {
-	return OutboxModel.update({
-		status: ENUM_OUTBOX_STATUS.PROCESSING,
-	}, {
-		where: {
-			id,
-			status: ENUM_OUTBOX_STATUS.PENDING,
-		},
-		transaction,
-	})
-}
-
-async function updateOutboxStatusByIds(ids, status, { transaction } = {}) {
+async function updateOutboxStatusByIds(ids, row, { transaction } = {}) {
 	if (!ids || ids.length === 0) {
 		return [0];
 	}
 
-	return OutboxModel.update({
-		status,
-	}, {
+	return OutboxModel.update(row, {
 		where: {
 			id: ids,
 		},
@@ -54,7 +45,6 @@ async function updateOutboxStatusByIds(ids, status, { transaction } = {}) {
 
 module.exports = {
 	createOutbox,
-	getPendingOutboxByTopic,
-	setPendingOutboxToProcessingById,
+	getPendingOutboxesByTopic,
 	updateOutboxStatusByIds,
 };

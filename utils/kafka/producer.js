@@ -7,6 +7,8 @@ const { Partitioners } = require('kafkajs');
 class BaseProducer {
 	constructor(kafkaInstance) {
 		this.producer = kafkaInstance.producer({
+			// 警告：僅建議在開發環境中使用，生產環境應手動管理 Topic
+			allowAutoTopicCreation: true,
 			idempotent: true, // 開啟冪等性以保證 Data Consistency
 			maxInFlightRequests: 1, // 保證訊息順序性
 			createPartitioner: Partitioners.DefaultPartitioner, // ✅ 明確指定使用新的預設分區器，這會告訴 KafkaJS：「我知道演算法改了，我就是要用新的。」
@@ -52,7 +54,7 @@ class BaseProducer {
 			return result;
 		} catch (error) {
 			// 資安與維運建議：錯誤不應包含敏感資訊，但需記錄 Topic 與 Key
-			logger.error(`Failed to send message to ${topic}:`, error.message);
+			logger.error({ err: error }, `Failed to send message to ${topic}`);
 			throw error;
 		}
 	}

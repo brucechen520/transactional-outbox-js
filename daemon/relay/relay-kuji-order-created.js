@@ -1,60 +1,62 @@
 const {
-	getPendingOutboxByTopic,
+	getPendingOutboxesByTopic,
 	updateOutboxStatusByIds,
 } = require('../../server/stores/outbox');
-const { KUJI_ORDER_CREATED } = require('./topic');
+const { KUJI_ORDER_CREATED } = require('./outbox-topic');
 const KafkaClient = require('../../utils/kafka/client');
 const logger = require('../../utils/pino')({
 	level: 'debug',
-	prettyPrint: false,
+	prettyPrint: true,
 });
 const { ENUM_OUTBOX_STATUS } = require('../../server/lib/enum');
+const Transaction = require('../../utils/db/transaction');
+const topicMap = require('./outbox-map-kafka-topic');
 
 module.exports = async function () {
-	// 1. 讀取：一次最多抓 100 筆 PENDING 的訊息
-	const outboxes = await getPendingOutboxByTopic(KUJI_ORDER_CREATED, {
-		limit: 100,
-	});
+	const txn = new Transaction();
 
-	if (outboxes.length === 0) {
-		return;
-	}
+	const handle = async function (transaction) {
+		// 1. 讀取：一次最多抓 50 筆 PENDING 的訊息
+		// 使用 FOR UPDATE SKIP LOCKED 鎖定這些行，並跳過被其他 worker 鎖定的行
+		const outboxes = await getPendingOutboxesByTopic(KUJI_ORDER_CREATED, {
+			limit: 50,
+			transaction,
+			lock: transaction.LOCK.UPDATE,
+			skipLocked: true,
+		});
 
-	logger.info(`[${KUJI_ORDER_CREATED}] Found ${outboxes.length} pending outbox messages.`);
-
-	const outboxIds = outboxes.map(o => o.id);
-
-	// 2. 鎖定：馬上將這些訊息狀態更新為 PROCESSING，防止其他 worker 重複處理
-	await updateOutboxStatusByIds(outboxIds, ENUM_OUTBOX_STATUS.PROCESSING);
-
-	const producer = await KafkaClient.getProducer();
-	const successfulIds = [];
-	const failedIds = [];
-
-	// 3. 處理：逐一發送到 Kafka
-	for (const outbox of outboxes) {
-		try {
-			await producer.send({
-				topic: outbox.topic,
-				payload: outbox.payload,
-				key: `kuji:order:${outbox.payload.kujiOrderId}`, // 使用業務相關的 key 來確保訊息分區一致性
-			});
-
-			successfulIds.push(outbox.id);
-		} catch (error) {
-			logger.error({ err: error, outboxId: outbox.id }, `[${KUJI_ORDER_CREATED}] Failed to relay message.`);
-			failedIds.push(outbox.id);
+		if (outboxes.length === 0) {
+			await transaction.commit();
+			return;
 		}
-	}
 
-	// 4. 更新：根據處理結果，批次更新訊息狀態為 DONE 或 FAILED
-	if (successfulIds.length > 0) {
-		await updateOutboxStatusByIds(successfulIds, ENUM_OUTBOX_STATUS.DONE);
-		logger.info(`[${KUJI_ORDER_CREATED}] Successfully relayed ${successfulIds.length} messages.`);
-	}
+		logger.info(`[${KUJI_ORDER_CREATED}] Found ${outboxes.length} pending outbox messages.`);
 
-	if (failedIds.length > 0) {
-		await updateOutboxStatusByIds(failedIds, ENUM_OUTBOX_STATUS.FAILED);
-		logger.warn(`[${KUJI_ORDER_CREATED}] Failed to relay ${failedIds.length} messages.`);
-	}
+		const producer = await KafkaClient.getProducer();
+
+		// 2. 處理：逐一發送到 Kafka。此處若有任何一個訊息發送失敗，會直接拋出錯誤，
+		// 讓整個 transaction rollback，確保批次處理的原子性。
+		for (const outbox of outboxes) {
+			// 查找映射表，若無設定則預設回退到 outbox 原始 topic
+			const targetTopics = topicMap.get(outbox.topic) || [outbox.topic];
+
+			// 支援 Fan-out: 迴圈發送到所有目標 Topic
+			for (const targetTopic of targetTopics) {
+				await producer.send({
+					topic: targetTopic,
+					payload: outbox.payload,
+					key: `${targetTopic}:orderId:${outbox.payload.kujiOrderId}`,
+				});
+			}
+		}
+
+		// 3. 更新：如果全部成功，則將整批訊息狀態更新為 DONE
+		const outboxIds = outboxes.map(o => o.id);
+
+		await updateOutboxStatusByIds(outboxIds, ENUM_OUTBOX_STATUS.DONE, { transaction });
+
+		logger.info(`[${KUJI_ORDER_CREATED}] Successfully relayed ${outboxes.length} messages.`);
+	};
+
+	await txn.commit(handle);
 };
