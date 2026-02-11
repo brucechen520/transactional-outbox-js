@@ -1,7 +1,7 @@
 const {
-	KUJI_ORDER_CREATED,
-} = require('./outbox-topic');
+	TOPIC_KUJI_ORDER_CREATED,
+} = process.env;
 
 module.exports = new Map([
-	[KUJI_ORDER_CREATED, require('./relay-kuji-order-created')],
+	[TOPIC_KUJI_ORDER_CREATED, require('./relay-kuji-order-created')],
 ]);

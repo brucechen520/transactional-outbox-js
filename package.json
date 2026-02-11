@@ -4,7 +4,8 @@
   "scripts": {
     "test-sql": "node bin/test-sql.js",
     "test-scenario": "node bin/test-scenario.js",
-    "relay-outbox": "node bin/relay-outbox.js"
+    "relay-outbox": "node bin/relay-outbox.js",
+    "consume-queue": "node bin/consume-queue.js"
   },
   "dependencies": {
     "ajv": "8.17.1",

@@ -11,6 +11,9 @@ const logger = require('../../utils/pino')({
 });
 const ApiError = require('../../utils/fastify/error');
 const { ENUM_OUTBOX_STATUS } = require('../lib/enum');
+const {
+	TOPIC_KUJI_ORDER_CREATED,
+} = process.env;
 
 /**
  * ❌ 錯誤示範：Kafka有資料寫進去，但在 db.commit前，db發生 rollback 或 connection closed，導致「沒訂單、有訊息」，俗稱 zombie data
@@ -82,7 +85,7 @@ async function badScenarioWithMQ() {
 			userId: 1,
 			prizeName: '魯夫',
 		},
-		key: 'kuji:order:created',
+		key: TOPIC_KUJI_ORDER_CREATED,
 	});
 }
 
@@ -115,13 +118,13 @@ async function badScenarioWithConnectionPoolExhaustion() {
 		const producer = await KafkaClient.getProducer();
 
 		await producer.send({
-			topic: 'kuji-topic',
+			topic: TOPIC_KUJI_ORDER_CREATED,
 			payload: {
 				id: 1,
 				userId: 1,
 				prizeName: '魯夫',
 			},
-			key: 'kuji:order:created',
+			key: TOPIC_KUJI_ORDER_CREATED,
 		});
 
 		await t.commit(); // 執行到這 connection才會還給 pool
@@ -156,7 +159,7 @@ async function createKujiOrder({
 			}, { transaction });
 
 			await OutboxStore.createOutbox({
-				topic: 'kuji:order:created',
+				topic: TOPIC_KUJI_ORDER_CREATED,
 				payload: { userId, kujiOrderId: kujiOrder.id, requestId },
 				status: ENUM_OUTBOX_STATUS.PENDING,
 			}, { transaction });

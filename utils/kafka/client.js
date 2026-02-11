@@ -39,7 +39,7 @@ class KafkaClient {
 		});
 
 		this._sharedProducer = null;
-		this._consumerMap = new Map();
+		this._sharedConsumer = null;
 	}
 
 	// 取得 Kafka 原始實體
@@ -82,16 +82,20 @@ class KafkaClient {
 		return this._sharedProducer;
 	}
 
-	// 根據 GroupID 管理 Consumer 單例
+	/***
+	 * @description: kafka consumer run on the k8s pods that will only handle 1 groupId. GroupId must pass from outside(ex: aws config map, yaml)
+	 * @argument: groupId: String
+	 * */
 	getConsumer(groupId) {
-		if (!this._consumerMap.has(groupId)) {
+		if (!this._sharedConsumer) {
 			const consumer = new ConsumerWrapper(this.kafka, groupId);
-			this._consumerMap.set(groupId, consumer);
+			this._sharedConsumer = consumer;
 		}
-		return this._consumerMap.get(groupId);
+
+		return this._sharedConsumer;
 	}
 
-	// 優雅停機 (Graceful Shutdown)
+	// Graceful Shutdown
 	async disconnectAll() {
 		try {
 			if (this._sharedProducer) {

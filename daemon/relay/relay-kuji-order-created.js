@@ -2,7 +2,7 @@ const {
 	getPendingOutboxesByTopic,
 	updateOutboxStatusByIds,
 } = require('../../server/stores/outbox');
-const { KUJI_ORDER_CREATED } = require('./outbox-topic');
+const { TOPIC_KUJI_ORDER_CREATED } = process.env;
 const KafkaClient = require('../../utils/kafka/client');
 const logger = require('../../utils/pino')({
 	level: 'debug',
@@ -18,7 +18,7 @@ module.exports = async function () {
 	const handle = async function (transaction) {
 		// 1. 讀取：一次最多抓 50 筆 PENDING 的訊息
 		// 使用 FOR UPDATE SKIP LOCKED 鎖定這些行，並跳過被其他 worker 鎖定的行
-		const outboxes = await getPendingOutboxesByTopic(KUJI_ORDER_CREATED, {
+		const outboxes = await getPendingOutboxesByTopic(TOPIC_KUJI_ORDER_CREATED, {
 			limit: 50,
 			transaction,
 			lock: transaction.LOCK.UPDATE,
@@ -26,11 +26,10 @@ module.exports = async function () {
 		});
 
 		if (outboxes.length === 0) {
-			await transaction.commit();
 			return;
 		}
 
-		logger.info(`[${KUJI_ORDER_CREATED}] Found ${outboxes.length} pending outbox messages.`);
+		logger.info(`[${TOPIC_KUJI_ORDER_CREATED}] Found ${outboxes.length} pending outbox messages.`);
 
 		const producer = await KafkaClient.getProducer();
 
@@ -57,7 +56,7 @@ module.exports = async function () {
 			status: ENUM_OUTBOX_STATUS.DONE,
 		}, { transaction });
 
-		logger.info(`[${KUJI_ORDER_CREATED}] Successfully relayed ${outboxes.length} messages.`);
+		logger.info(`[${TOPIC_KUJI_ORDER_CREATED}] Successfully relayed ${outboxes.length} messages.`);
 	};
 
 	await txn.commit(handle);
