@@ -10,6 +10,8 @@
 # Scenario Introduction
 ## Bad Scenario
 - see [Bad Scenario README](docs/bad-scenario-dual-write-issue/README.MD)
+## Outbox Scenario's Implement and Operation Flow
+- see [Transactional Outbox Pattern](docs/scenario-with-outbox-pattern/README.MD)
 
 # Transactional Outbox Pattern Implementation Guide
 ## 📝 The Motivation: Why This Pattern?

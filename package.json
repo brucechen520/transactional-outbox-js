@@ -5,7 +5,8 @@
     "test-sql": "node bin/test-sql.js",
     "test-scenario": "node bin/test-scenario.js",
     "relay-outbox": "node bin/relay-outbox.js",
-    "consume-queue": "node bin/consume-queue.js"
+    "consume-kuji-order-notify": "node bin/consume-kuji-order-notify.js",
+    "consume-shipping": "node bin/consume-shipping.js"
   },
   "dependencies": {
     "ajv": "8.17.1",
